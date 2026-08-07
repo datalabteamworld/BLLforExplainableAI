@@ -1,0 +1,2 @@
+# BLLforExplainableAI
+The Business Language Layer introduces a new paradigm for Explainable AI by reframing explainability from a model-centric activity into a decision-centric one. Instead of merely explaining why a prediction occurred, BLL extends AI explanations to communicate business meaning, expected outcomes, financial consequences, and recommended actions in language that decision-makers can readily understand.
