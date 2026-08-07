@@ -438,7 +438,8 @@ Business-Language-Layer/
 # 📈 Vision
 
 We envision a future where Explainable AI no longer ends with model interpretation but becomes a complete decision-support experience.
----
+
+```text
 ┌──────────────────────────────┐
 │      Explainability          │
 └──────────────────────────────┘
@@ -463,7 +464,6 @@ We envision a future where Explainable AI no longer ends with model interpretati
 │     Better Decisions         │
 └──────────────────────────────┘
 ```
-
 ---
 
 # 📚 Citation
