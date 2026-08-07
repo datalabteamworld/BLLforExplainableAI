@@ -1,6 +1,3 @@
-# BLLforExplainableAI
-The Business Language Layer introduces a new paradigm for Explainable AI by reframing explainability from a model-centric activity into a decision-centric one. Instead of merely explaining why a prediction occurred, BLL extends AI explanations to communicate business meaning, expected outcomes, financial consequences, and recommended actions in language that decision-makers can readily understand.
-
 <div align="center">
 
 # 🚀 Business Language Layer (BLL)
@@ -65,18 +62,28 @@ Why did the model predict this?
 Decision-makers need much more.
 
 ```
-Why?
-↓
-
-So What?
-
-↓
-
-What Happens Next?
-
-↓
-
-What Should We Do?
+┌──────────────────────────────┐
+│            WHY?              │
+│ Why did the model predict it?│
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│          SO WHAT?            │
+│ What does it mean?           │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│     WHAT HAPPENS NEXT?       │
+│ Business implications        │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│     WHAT SHOULD WE DO?       │
+│ Recommended business action  │
+└──────────────────────────────┘
 ```
 
 BLL transforms explainability into **decision intelligence**.
@@ -96,18 +103,25 @@ BLL **does not retrain your model.**
 Instead, it acts as a reasoning layer that consumes existing explainability outputs and translates them into business-facing language.
 
 ```
-Machine Learning Model
-        │
-        ▼
- SHAP / LIME / XAI
-        │
-        ▼
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Business Language Layer
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        │
-        ▼
-Business Decisions
+┌──────────────────────────────┐
+│   Machine Learning Model     │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│      SHAP / LIME / XAI       │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│   Business Language Layer    │
+│           (BLL)              │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│   Business Decision Support  │
+└──────────────────────────────┘
 ```
 
 ---
@@ -117,22 +131,31 @@ Business Decisions
 BLL consists of four sequential reasoning stages.
 
 ```text
-                 BUSINESS LANGUAGE LAYER
+                                 BUSINESS LANGUAGE LAYER
 
-       ┌───────────────────────────────────────┐
-
-        🔍 Interpret
-             │
-             ▼
-        🌍 Contextualise
-             │
-             ▼
-        💰 Quantify
-             │
-             ▼
-        🎯 Recommend
-
-       └───────────────────────────────────────┘
+┌───────────────────────────────────────────────┐
+│ 🔍 INTERPRET                                 │
+│ Translate technical explanations into plain   │
+│ business language                             │
+└───────────────────────────────────────────────┘
+                     │
+                     ▼
+┌───────────────────────────────────────────────┐
+│ 🌍 CONTEXTUALISE                             │
+│ Explain operational and business impact      │
+└───────────────────────────────────────────────┘
+                     │
+                     ▼
+┌───────────────────────────────────────────────┐
+│ 💰 QUANTIFY                                  │
+│ Estimate financial and operational outcomes  │
+└───────────────────────────────────────────────┘
+                     │
+                     ▼
+┌───────────────────────────────────────────────┐
+│ 🎯 RECOMMEND                                 │
+│ Suggest evidence-based business actions      │
+└───────────────────────────────────────────────┘
 ```
 
 ---
@@ -218,26 +241,34 @@ NGN 31,080
 # 🔄 Where BLL Fits
 
 ```text
-                Existing Pipeline
-
-      Data
-        │
-        ▼
- Machine Learning Model
-        │
-        ▼
- SHAP / LIME Explanation
-        │
-        ▼
-━━━━━━━━━━━━━━━━━━━━━━━━━━
- Business Language Layer
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-        │
-        ▼
- Decision Intelligence
-        │
-        ▼
- Business Action
+┌──────────────────────────────┐
+│          Raw Data            │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│   Machine Learning Model     │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│   SHAP / LIME Explanation    │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│   Business Language Layer    │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│   Decision Intelligence      │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│      Business Action         │
+└──────────────────────────────┘
 ```
 
 ---
@@ -245,35 +276,44 @@ NGN 31,080
 # 📊 Example Workflow
 
 ```text
-Customer Order
-
-↓
-
-Predict Late Delivery
-
-↓
-
-SHAP Explanation
-
-↓
-
-BLL
-
-↓
-
-Business Impact
-
-↓
-
-Financial Cost
-
-↓
-
-Recommended Action
-
-↓
-
-Decision
+┌──────────────────────────────┐
+│      Customer Order          │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│ Predict Late Delivery Risk   │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│     SHAP Explanation         │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│ Business Language Layer      │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│ Business Impact Assessment   │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│ Financial Impact Estimation  │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│ Recommended Business Action  │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│ Final Business Decision      │
+└──────────────────────────────┘
 ```
 
 ---
@@ -302,37 +342,51 @@ BLL is domain-agnostic and can be integrated into AI systems across industries.
 Traditional XAI
 
 ```
-Prediction
+Traditional Explainable AI
 
-↓
-
-Why?
+┌──────────────────────────────┐
+│       Prediction             │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│            WHY?              │
+└──────────────────────────────┘
 ```
 
 BLL
 
 ```
-Prediction
+Business Language Layer
 
-↓
-
-Why?
-
-↓
-
-So What?
-
-↓
-
-Business Impact
-
-↓
-
-Recommendation
-
-↓
-
-Expected Outcome
+┌──────────────────────────────┐
+│       Prediction             │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│            WHY?              │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│          SO WHAT?            │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│      BUSINESS IMPACT         │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│       RECOMMENDATION         │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│     EXPECTED OUTCOME         │
+└──────────────────────────────┘
 ```
 
 ---
@@ -350,9 +404,6 @@ Business-Language-Layer/
 │
 ├── prototype/
 │     Interface prototype
-│
-├── examples/
-│     Demonstrations
 │
 ├── docs/
 │     Documentation
@@ -388,26 +439,29 @@ Business-Language-Layer/
 
 We envision a future where Explainable AI no longer ends with model interpretation but becomes a complete decision-support experience.
 
-BLL transforms
-
-```
-Explainability
-
-↓
-
-Understanding
-
-↓
-
-Business Intelligence
-
-↓
-
-Action
-
-↓
-
-Better Decisions
+┌──────────────────────────────┐
+│      Explainability          │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│      Understanding           │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│  Business Intelligence       │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│         Action               │
+└──────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│     Better Decisions         │
+└──────────────────────────────┘
 ```
 
 ---
@@ -435,7 +489,6 @@ You can contribute by:
 - Improving documentation
 - Developing prototype implementations
 - Creating domain-specific examples
-- Building dashboards
 - Conducting evaluation studies
 - Extending the framework
 
