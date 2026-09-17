@@ -1,0 +1,26 @@
+# Data is not committed - download from Kaggle, see data/README.md
+data/raw/*
+!data/raw/.gitkeep
+data/interim/*
+data/processed/*
+!data/*/.gitkeep
+
+# Artefacts
+models/*.joblib
+models/*.pkl
+reports/figures/*.png
+reports/*.csv
+reports/*.json
+reports/*.txt
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+venv/
+.venv/
+.env
+
+# OS
+.DS_Store
