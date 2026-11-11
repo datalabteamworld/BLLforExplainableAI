@@ -240,6 +240,51 @@ def test_cost_curve_prefers_recall_when_misses_are_expensive():
     assert dear.threshold <= cheap.threshold
 
 
+def test_evaluate_reports_at_the_supplied_threshold_not_the_test_optimum():
+    """Choosing the cutoff on the test labels inflates recall and precision.
+
+    ``evaluate`` must score at the threshold it is given, and report the
+    test-optimal one only separately, as an oracle.
+    """
+    from olist.evaluate import evaluate
+
+    rng = np.random.default_rng(2)
+    y = rng.binomial(1, 0.08, 5000)
+    proba = np.clip(rng.beta(2, 8, 5000) + 0.3 * y, 0, 1)
+
+    m = evaluate(y, proba, CONFIG.cost, threshold=0.6)["metrics"]
+    assert m["chosen_threshold"] == 0.6
+    assert m["threshold_source"] == "holdout"
+    assert m["recall_at_chosen"] == pytest.approx(((proba >= 0.6) & (y == 1)).sum() / y.sum())
+    assert m["oracle_threshold"] != 0.6
+    # The oracle is, by construction, at least as cheap on the evaluation set.
+    assert m["cost_per_order_at_oracle"] <= m["cost_per_order"] + 1e-12
+
+
+def test_holdout_threshold_never_sees_rows_outside_the_training_frame():
+    """The threshold is learned on the latest slice of *train* only."""
+    from olist.evaluate import holdout_threshold
+
+    seen = []
+
+    class Spy:
+        def predict_proba(self, X):
+            seen.append(X.index)
+            p = np.linspace(0, 1, len(X))
+            return np.column_stack([1 - p, p])
+
+    train = pd.DataFrame({
+        "order_purchase_timestamp": pd.date_range("2018-01-01", periods=100, freq="D"),
+        "x": np.arange(100.0),
+        TARGET: np.r_[np.zeros(90), np.ones(10)].astype(int),
+    }).sample(frac=1, random_state=0)
+    holdout_threshold(Spy(), train, ["x"], CONFIG.cost, holdout_frac=0.2,
+                      time_key="order_purchase_timestamp")
+    idx = seen[0]
+    assert len(idx) == 20
+    assert set(train.loc[idx, "x"]) == set(range(80, 100))  # the latest 20 days
+
+
 # ==========================================================================
 # History features -- leakage is the whole risk here
 # ==========================================================================

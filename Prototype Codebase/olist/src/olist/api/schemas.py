@@ -336,9 +336,29 @@ class CalibrationReport(BaseModel):
     checked_at: datetime
 
 
+class EnvironmentInfo(BaseModel):
+    """Which data environment answered this request.
+
+    Returned on every metadata response so a client can never display a
+    figure without knowing whether it was measured or simulated.
+    """
+
+    key: str
+    label: str
+    kind: str = Field(description="'empirical' or 'synthetic'")
+    currency: str
+    provenance: str
+    disclosure: str | None = Field(
+        None,
+        description="Present only for synthetic environments; must be shown "
+                    "alongside any figure derived from them.",
+    )
+
+
 class HealthResponse(BaseModel):
     status: Literal["ok", "degraded"]
     model_loaded: bool
     model_version: str | None
     history_rows: int
     api_version: str
+    environment: EnvironmentInfo | None = None

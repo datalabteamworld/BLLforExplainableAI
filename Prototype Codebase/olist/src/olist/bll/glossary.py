@@ -96,6 +96,60 @@ GLOSSARY: dict[str, FeatureNarrative] = {
         raises="This is an interstate shipment, crossing more of the carrier network.",
         lowers="Seller and customer are in the same state.",
     ),
+    # Coordinates and administrative areas stand in for corridor conditions the
+    # data does not record directly -- road quality, carrier density, river and
+    # border crossings. They are described as corridor effects rather than as
+    # properties of a place, because the model has learned where delays cluster,
+    # not why. None is a lever: an operations lead cannot move a city.
+    "customer_state": FeatureNarrative(
+        label="Destination region",
+        raises="Deliveries into this region have run late more often than average.",
+        lowers="This region has a better-than-average delivery record.",
+    ),
+    "seller_state": FeatureNarrative(
+        label="Origin region",
+        raises="Dispatches from this region have run late more often than average.",
+        lowers="This region dispatches more reliably than average.",
+    ),
+    "customer_city": FeatureNarrative(
+        label="Destination city",
+        raises="Last-mile delivery into this city has been slower than average.",
+        lowers="Last-mile delivery into this city has been faster than average.",
+    ),
+    "seller_city": FeatureNarrative(
+        label="Origin city",
+        raises="Collections from this city have been slower than average.",
+        lowers="Collections from this city have been faster than average.",
+    ),
+    "customer_lat": FeatureNarrative(
+        label="Destination position (north-south)",
+        raises="The destination sits on a corridor that has run slower than average.",
+        lowers="The destination sits on a corridor that has run faster than average.",
+        unit="degrees",
+    ),
+    "customer_lng": FeatureNarrative(
+        label="Destination position (east-west)",
+        raises="The destination sits on a corridor that has run slower than average.",
+        lowers="The destination sits on a corridor that has run faster than average.",
+        unit="degrees",
+    ),
+    "seller_lat": FeatureNarrative(
+        label="Origin position (north-south)",
+        raises="The origin sits on a corridor that has run slower than average.",
+        lowers="The origin sits on a corridor that has run faster than average.",
+        unit="degrees",
+    ),
+    "seller_lng": FeatureNarrative(
+        label="Origin position (east-west)",
+        raises="The origin sits on a corridor that has run slower than average.",
+        lowers="The origin sits on a corridor that has run faster than average.",
+        unit="degrees",
+    ),
+    "is_same_city": FeatureNarrative(
+        label="Same-city delivery",
+        raises="Seller and customer are in different cities, so the parcel enters the long-haul network.",
+        lowers="Seller and customer are in the same city, so the parcel stays on local routes.",
+    ),
     "route_late_rate_to_date": FeatureNarrative(
         label="Route track record",
         raises="This lane has run late more often than average.",

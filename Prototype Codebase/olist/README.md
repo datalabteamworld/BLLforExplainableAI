@@ -37,7 +37,7 @@ python -m olist.train --scenario pre_dispatch            # baseline, minutes
 python -m olist.train --scenario pre_dispatch --tune --fast   # halving search
 python -m olist.train --scenario pre_dispatch --tune          # full search, slow
 
-pytest                                    # 38 tests
+pytest                                    # 161 tests
 streamlit run app/streamlit_app.py
 ```
 
