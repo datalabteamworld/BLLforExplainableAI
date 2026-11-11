@@ -39,6 +39,7 @@ import pandas as pd
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
+from .. import environments
 from ..bll import PredictionService, glossary
 from ..bll.brief import BusinessCostModel
 from . import schemas as S
@@ -66,18 +67,42 @@ def _find(patterns: list[str], dirs: list[Path]) -> Path | None:
     return None
 
 
-def load_service() -> PredictionService | None:
-    """Locate and load the trained artefact. Returns None and records why."""
-    model_path = _find(["model_post_dispatch.joblib", "model_*.joblib"], MODEL_DIRS)
-    if model_path is None:
-        _state["error"] = ("No model artefact found. Train one with "
-                           "`python -m olist.train --scenario post_dispatch`.")
-        return None
+def load_service(env_key: str | None = None) -> PredictionService | None:
+    """Locate and load the trained artefact for one environment.
+
+    Defaults to the empirical Olist environment: a caller that names nothing
+    gets the data the paper's results rest on, never the synthetic
+    demonstration.
+    """
+    env = environments.get(env_key)
+
+    if env.is_synthetic:
+        # The synthetic environment owns its directories exclusively, so no
+        # search: a miss means it has not been built yet.
+        model_path = env.model_path()
+        if not model_path.exists():
+            _state["error"] = (
+                f"No model for {env.label}. Build it with "
+                f"`python scripts/build_synthetic_ng.py`."
+            )
+            return None
+        history_path = env.processed_path
+        background_path = env.processed_path.parent / "background.parquet"
+    else:
+        # The empirical path keeps its original directory search, which
+        # supports the deploy/ bundle layout and lets tests point it at a
+        # temporary directory.
+        model_path = _find(["model_post_dispatch.joblib", "model_*.joblib"], MODEL_DIRS)
+        if model_path is None:
+            _state["error"] = ("No model artefact found. Train one with "
+                               "`python -m olist.train --scenario post_dispatch`.")
+            return None
+        history_path = _find(["orders_features.parquet", "sample_orders.parquet"], DATA_DIRS)
+        background_path = _find(["background.parquet"], DATA_DIRS)
+
     try:
         service = PredictionService.from_files(
-            model_path,
-            _find(["orders_features.parquet", "sample_orders.parquet"], DATA_DIRS),
-            _find(["background.parquet"], DATA_DIRS),
+            model_path, history_path, background_path, environment=env,
         )
         logger.info("Loaded %s: %d features, threshold %.4f",
                     model_path.name, len(service.feature_columns), service.threshold)
@@ -90,7 +115,12 @@ def load_service() -> PredictionService | None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    _state["service"] = load_service()
+    # Environment is fixed per process via OLIST_ENVIRONMENT rather than
+    # switched per request. Holding two services in one process would make it
+    # possible to answer an empirical question with a synthetic model through
+    # a mis-set parameter, and that failure would be silent.
+    _state["environment"] = os.getenv("OLIST_ENVIRONMENT", environments.DEFAULT.key)
+    _state["service"] = load_service(_state["environment"])
     _state["store"] = PredictionStore(os.getenv("OLIST_DB", "data/predictions.db"))
     yield
 
@@ -261,17 +291,28 @@ def _order_row(service: PredictionService, order_id: str) -> pd.DataFrame:
 # --------------------------------------------------------------------------
 
 
+def _environment_info() -> S.EnvironmentInfo:
+    """Provenance of whatever this process is serving."""
+    env = environments.get(_state.get("environment"))
+    return S.EnvironmentInfo(
+        key=env.key, label=env.label, kind=env.kind, currency=env.currency,
+        provenance=env.provenance(), disclosure=env.disclosure,
+    )
+
+
 @app.get("/health", response_model=S.HealthResponse, tags=["meta"])
 def health() -> S.HealthResponse:
     service = _state["service"]
     if service is None:
         return S.HealthResponse(status="degraded", model_loaded=False,
                                 model_version=None, history_rows=0,
-                                api_version=API_VERSION)
+                                api_version=API_VERSION,
+                                environment=_environment_info())
     return S.HealthResponse(status="ok", model_loaded=True,
                             model_version=model_version(service),
                             history_rows=len(service.history),
-                            api_version=API_VERSION)
+                            api_version=API_VERSION,
+                            environment=_environment_info())
 
 
 @app.get("/model", response_model=S.ModelInfo, tags=["meta"])

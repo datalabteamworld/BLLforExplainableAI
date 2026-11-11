@@ -305,23 +305,38 @@ def clean_translation(df: pd.DataFrame) -> tuple[pd.DataFrame, CleaningReport]:
     return out, rep
 
 
-def clean_geolocation(df: pd.DataFrame) -> tuple[pd.DataFrame, CleaningReport]:
+#: Continental Brazil plus offshore territories: (lat_lo, lat_hi, lng_lo, lng_hi).
+BRAZIL_BOUNDS = (-34.0, 5.3, -74.0, -34.0)
+
+#: Continental Nigeria, for the synthetic demonstration environment.
+NIGERIA_BOUNDS = (4.0, 14.0, 2.5, 15.0)
+
+
+def clean_geolocation(
+    df: pd.DataFrame,
+    bounds: tuple[float, float, float, float] = BRAZIL_BOUNDS,
+    region: str = "Brazil",
+) -> tuple[pd.DataFrame, CleaningReport]:
     """Aggregate ``olist_geolocation_dataset`` to one row per zip prefix.
 
     The raw table has ~1M rows because each zip prefix appears once per
-    recorded address. Coordinates outside Brazil's bounding box are dropped
-    before averaging so that a handful of bad fixes cannot drag a zip
-    centroid into the Atlantic.
+    recorded address. Coordinates outside the region's bounding box are
+    dropped before averaging so that a handful of bad fixes cannot drag a zip
+    centroid into the ocean.
+
+    ``bounds`` defaults to Brazil so that the empirical Olist path is
+    unaffected by the addition of the synthetic Nigerian environment. The
+    synthetic generator passes ``NIGERIA_BOUNDS`` explicitly.
     """
     rep = CleaningReport("geolocation", len(df))
     out = df.copy()
 
-    # Continental Brazil plus offshore territories.
+    lat_lo, lat_hi, lng_lo, lng_hi = bounds
     in_bounds = (
-        out["geolocation_lat"].between(-34.0, 5.3)
-        & out["geolocation_lng"].between(-74.0, -34.0)
+        out["geolocation_lat"].between(lat_lo, lat_hi)
+        & out["geolocation_lng"].between(lng_lo, lng_hi)
     )
-    rep.record("coordinates outside Brazil dropped", (~in_bounds).sum())
+    rep.record(f"coordinates outside {region} dropped", (~in_bounds).sum())
     out = out[in_bounds]
 
     agg = (

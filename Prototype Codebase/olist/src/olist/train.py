@@ -39,7 +39,7 @@ from .config import (
     TARGET,
     TIME_KEY,
 )
-from .evaluate import comparison_table, evaluate
+from .evaluate import comparison_table, evaluate, holdout_threshold
 
 logger = logging.getLogger(__name__)
 
@@ -169,7 +169,9 @@ def run(scenario: str = "pre_dispatch", tune: bool = False,
         logger.info("--- %s (%s) ---", name, scenario)
         model, info = fit_model(train, cols, name, tune, fast, calibrate)
         proba = model.predict_proba(test[cols])[:, 1]
-        results.append(evaluate(test[TARGET].to_numpy(), proba, CONFIG.cost, label=name))
+        thr = holdout_threshold(model, train, cols, CONFIG.cost)
+        results.append(evaluate(test[TARGET].to_numpy(), proba, CONFIG.cost,
+                                label=name, threshold=thr))
         fitted[name] = model
         search_info[name] = info
 

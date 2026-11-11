@@ -21,12 +21,23 @@ import logging
 import numpy as np
 import pandas as pd
 
-from . import calendar_br as cb
 from . import history
 
 logger = logging.getLogger(__name__)
 
 SECONDS_PER_DAY = 86_400
+
+
+def _default_calendar():
+    """The Brazilian calendar, imported lazily.
+
+    Kept as a function rather than a module-level import so that the default
+    is visible at the one call site that uses it, rather than being an
+    invisible global that a future edit could redirect.
+    """
+    from . import calendar_br
+
+    return calendar_br
 
 
 # ==========================================================================
@@ -193,13 +204,25 @@ def add_target(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def add_calendar_features(df: pd.DataFrame) -> pd.DataFrame:
+def add_calendar_features(df: pd.DataFrame, calendar=None) -> pd.DataFrame:
     """Add purchase-time calendar features and transit-window event counts.
 
     The transit-window counts are the substantive addition over a
     purchase-date holiday flag: they measure how many non-working days the
     carrier must traverse to hit the promised date.
+
+    ``calendar`` is the holiday module to read. It defaults to
+    :mod:`olist.calendar_br`, so the empirical Olist path is unchanged by the
+    existence of other environments. The synthetic Nigerian generator passes
+    :mod:`olist.calendar_ng`, which supplies Nigerian public holidays
+    (including the two Eids) and a December peak in place of Carnival and
+    Black Friday.
+
+    Both calendar modules expose the same four functions, so this needs no
+    conditional: ``build_daily_calendar``, ``count_events_in_window``,
+    ``days_to_nearest_peak`` and the same daily flag columns.
     """
+    cb = calendar if calendar is not None else _default_calendar()
     out = df.copy()
     ts = out["order_purchase_timestamp"]
 
@@ -265,11 +288,11 @@ def add_geo_features(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def build_features(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
+def build_features(tables: dict[str, pd.DataFrame], calendar=None) -> pd.DataFrame:
     """Full feature pipeline: merge, target, calendar, geography."""
     df = build_order_table(tables)
     df = add_target(df)
-    df = add_calendar_features(df)
+    df = add_calendar_features(df, calendar=calendar)
     df = add_geo_features(df)
     logger.info("Feature table: %d rows x %d cols", len(df), df.shape[1])
     return df
@@ -278,6 +301,7 @@ def build_features(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
 def build_modelling_table(
     tables: dict[str, pd.DataFrame],
     censor_buffer_days: int = 30,
+    calendar=None,
 ) -> pd.DataFrame:
     """Features, then delivered-only rows, then history, then censoring.
 
@@ -286,7 +310,7 @@ def build_modelling_table(
     *before* censoring, so that orders dropped at the end of the window still
     inform the history of the orders that remain.
     """
-    df = build_features(tables)
+    df = build_features(tables, calendar=calendar)
     df = select_modelling_rows(df)
     df = history.add_history_features(df)
     df = history.apply_censoring_filter(df, buffer_days=censor_buffer_days)

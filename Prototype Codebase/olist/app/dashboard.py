@@ -27,6 +27,8 @@ for candidate in (ROOT / "src", Path.cwd() / "src"):
     if candidate.exists():
         sys.path.insert(0, str(candidate))
 
+from olist import environments  # noqa: E402
+from olist.config import TIME_KEY  # noqa: E402
 from olist.bll import PredictionService, glossary  # noqa: E402
 from olist.bll.brief import BusinessCostModel  # noqa: E402
 
@@ -55,6 +57,25 @@ st.markdown("""
   /* Navigation rail */
   section[data-testid="stSidebar"] { background: var(--brand); width: 250px !important; }
   section[data-testid="stSidebar"] * { color: #E8EFEA !important; }
+  /* …except the form controls. Streamlit renders those on a white field, so
+     the pale rail colour above made typed text invisible rather than merely
+     low-contrast. Inputs get ink on white, like the rest of the page. */
+  section[data-testid="stSidebar"] input,
+  section[data-testid="stSidebar"] textarea,
+  section[data-testid="stSidebar"] [data-baseweb="input"] *,
+  section[data-testid="stSidebar"] [data-baseweb="base-input"] * {
+    color: #16212B !important;
+    -webkit-text-fill-color: #16212B !important;
+  }
+  section[data-testid="stSidebar"] [data-baseweb="input"],
+  section[data-testid="stSidebar"] [data-baseweb="base-input"] {
+    background: #FFFFFF !important;
+  }
+  section[data-testid="stSidebar"] input::placeholder {
+    color: #6B7A88 !important; -webkit-text-fill-color: #6B7A88 !important;
+  }
+  /* The number-input steppers sit on the same white field. */
+  section[data-testid="stSidebar"] button[kind="secondary"] svg { fill: #16212B; }
   /* Navigation items: a tap target with room around it reads as a menu;
      tightly stacked radio buttons read as a form. Hover and selection are
      distinguished by an accent rail rather than by shade alone, so the
@@ -111,6 +132,36 @@ st.markdown("""
     margin-bottom: 1.5rem;
   }
   .rail-note { font-size: .76rem; line-height: 1.6; opacity: .62; }
+  .rail-label {
+    font-family: ui-monospace, monospace; font-size: .64rem;
+    letter-spacing: .13em; text-transform: uppercase; opacity: .55;
+    margin-bottom: .4rem;
+  }
+  .env-chip {
+    display: inline-block; font-family: ui-monospace, monospace;
+    font-size: .6rem; font-weight: 700; letter-spacing: .1em;
+    padding: .16rem .5rem; border-radius: 3px;
+  }
+  .env-empirical { background: rgba(74,222,128,.17); color: #8FE0B0; }
+  .env-synthetic { background: rgba(232,163,61,.20); color: #F0C27B; }
+
+  /* Environment banner. Deliberately not subtle: a reader must never be
+     uncertain whether a figure on screen is measured or simulated. */
+  .env-banner {
+    border-radius: 9px; padding: .85rem 1.1rem; margin-bottom: 1rem;
+    border-left: 4px solid;
+  }
+  .env-banner-empirical {
+    background: #EDF7F1; border-left-color: #1E7F4F; color: #16212B;
+  }
+  .env-banner-synthetic {
+    background: #FDF3E3; border-left-color: #C77700; color: #16212B;
+  }
+  .env-banner-title {
+    font-family: ui-monospace, monospace; font-size: .7rem; font-weight: 700;
+    letter-spacing: .1em; margin-bottom: .2rem;
+  }
+  .env-banner-body { font-size: .84rem; line-height: 1.5; }
   section[data-testid="stSidebar"] .block-container { padding-top: 2rem; }
 
   /* Cards. Streamlit's bordered container is the element that actually wraps
@@ -206,14 +257,34 @@ def _find(patterns: list[str], dirs: list[Path]) -> Path | None:
 
 
 @st.cache_resource(show_spinner="Loading model…")
-def load_service(refund, churn, support, action, currency):
-    model_path = _find(["model_post_dispatch.joblib", "model_*.joblib"], MODEL_DIRS)
-    if model_path is None:
-        return None
+def load_service(env_key, refund, churn, support, action, currency):
+    """Load the model and data for one environment.
+
+    Both paths come from the same environment object, so a mismatched pair
+    cannot be assembled here. The artefact's recorded environment key is
+    checked inside the service as a second line of defence.
+    """
+    env = environments.get(env_key)
+    model_path = env.model_path()
+
+    if not model_path.exists():
+        # Fall back to the loose search only for the empirical environment,
+        # which supports the pre-existing deploy/ bundle layout.
+        if env.key != environments.OLIST.key:
+            return None
+        model_path = _find(["model_post_dispatch.joblib", "model_*.joblib"], MODEL_DIRS)
+        if model_path is None:
+            return None
+
+    history_path = (env.processed_path if env.processed_path.exists()
+                    else _find(["orders_features.parquet", "sample_orders.parquet"], DATA_DIRS))
+    background_path = env.processed_path.parent / "background.parquet"
+    if not background_path.exists():
+        background_path = _find(["background.parquet"], DATA_DIRS)
+
     return PredictionService.from_files(
-        model_path,
-        _find(["orders_features.parquet", "sample_orders.parquet"], DATA_DIRS),
-        _find(["background.parquet"], DATA_DIRS),
+        model_path, history_path, background_path,
+        environment=env,
         costs=BusinessCostModel(currency=currency, refund_share=refund,
                                 churn_share=churn, support_cost=support,
                                 intervention_cost=action),
@@ -230,6 +301,32 @@ with st.sidebar:
                 unsafe_allow_html=True)
     st.write("")
 
+    # Environment first: everything below inherits from it, so it belongs at
+    # the top rather than buried among the cost controls.
+    available = [k for k, e in environments.ENVIRONMENTS.items()
+                 if e.model_path().exists()
+                 or (k == environments.OLIST.key
+                     and _find(["model_*.joblib"], MODEL_DIRS) is not None)]
+    if not available:
+        available = [environments.OLIST.key]
+
+    st.markdown('<div class="rail-label">Data environment</div>', unsafe_allow_html=True)
+    env_key = st.radio(
+        "Data environment",
+        available,
+        format_func=lambda k: environments.get(k).label,
+        label_visibility="collapsed",
+    )
+    active_env = environments.get(env_key)
+
+    st.markdown(
+        f'<div class="env-chip env-{active_env.kind}">{active_env.kind.upper()}</div>'
+        f'<div class="rail-note" style="margin-top:.35rem">{active_env.description}</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.divider()
+
     view = st.radio(
         "Navigation",
         ["Overview", "Risk Dashboard", "Sales Analysis", "Orders",
@@ -239,37 +336,86 @@ with st.sidebar:
 
     st.divider()
     with st.expander("Cost assumptions"):
-        st.markdown('<div class="rail-note">Assumptions, not measured Olist '
+        st.markdown('<div class="rail-note">Assumptions, not measured '
                     'finances. Every figure moves with them.</div>',
                     unsafe_allow_html=True)
-        currency = st.text_input("Currency", "BRL")
+        _d = active_env
+        currency = st.text_input("Currency", _d.currency)
         refund = st.slider("Refund exposure", 0.0, 1.0, 0.42, 0.01)
         churn = st.slider("Repeat-purchase risk", 0.0, 1.0, 0.46, 0.01)
-        support = st.number_input("Support cost per contact", 0.0, 500.0, 12.0)
-        action = st.number_input("Cost of intervening", 0.0, 500.0, 4.0)
+        # Scale from the currency the user has actually typed, not the
+        # environment's default. Keying it to the default capped the naira
+        # fields at the real range, so a naira support cost could not be
+        # entered at all while the empirical environment was selected.
+        _ngn = currency.strip().upper() == "NGN"
+        _scale = 100.0 if _ngn else 1.0
+        support = st.number_input(
+            "Support cost per contact", min_value=0.0,
+            max_value=500.0 * _scale, value=12.0 * _scale, step=_scale,
+            key=f"support_{_ngn}",
+            help="A stipulated assumption, stated directly in the display "
+                 "currency rather than converted.")
+        action = st.number_input(
+            "Cost of intervening", min_value=0.0,
+            max_value=500.0 * _scale, value=4.0 * _scale, step=_scale,
+            key=f"action_{_ngn}",
+            help="A stipulated assumption, stated directly in the display "
+                 "currency rather than converted.")
 
     st.markdown('<div class="rail-note">Explainable AI decision support.<br>'
                 'Predict the risk · Explain it · Reduce it · Price the decision.</div>',
                 unsafe_allow_html=True)
 
-service = load_service(refund, churn, support, action, currency)
+service = load_service(env_key, refund, churn, support, action, currency)
 
 if service is None:
-    st.error("**No trained model found.** Expected `model_post_dispatch.joblib` "
-             "in `models/` or `deploy/`.")
-    st.code("python -m olist.validate --build\n"
-            "python -m olist.train --scenario post_dispatch", language="bash")
+    st.error(f"**No trained model for {active_env.label}.**")
+    if active_env.is_synthetic:
+        st.code("python scripts/build_synthetic_ng.py", language="bash")
+    else:
+        st.code("python -m olist.validate --build\n"
+                "python -m olist.train --scenario post_dispatch", language="bash")
     st.stop()
+
+def environment_banner() -> None:
+    """State the active environment before any figure is shown.
+
+    Rendered on every view rather than only the Overview page: a reader who
+    lands on Risk Dashboard from a link must still be able to tell whether
+    the numbers are measured or simulated.
+    """
+    kind = active_env.kind
+    body = active_env.disclosure or active_env.description
+    st.markdown(
+        f'<div class="env-banner env-banner-{kind}">'
+        f'<div class="env-banner-title">{active_env.banner}</div>'
+        f'<div class="env-banner-body">{body}</div></div>',
+        unsafe_allow_html=True,
+    )
+
 
 history = service.history
 if not len(history):
     st.error("No historical orders found. Run `python -m olist.validate --build`.")
     st.stop()
 
-if "risk" not in st.session_state:
+# Keyed on the environment and the model that produced the scores. An
+# unkeyed cache survives an environment switch, so the previous environment's
+# risk vector would be indexed against the new environment's order table --
+# silently, because both are plausible arrays of probabilities. Every
+# risk-derived figure on every page would then be wrong, and "highest risk"
+# would select an arbitrary order.
+_risk_key = f"risk::{env_key}::{service.artefact.get('trained_at', '')}"
+if _risk_key not in st.session_state:
+    for stale in [k for k in st.session_state if str(k).startswith("risk::")]:
+        del st.session_state[stale]
     with st.spinner("Scoring orders…"):
-        st.session_state["risk"] = service.predict_probability(history)
-risk_all = st.session_state["risk"]
+        st.session_state[_risk_key] = service.predict_probability(history)
+risk_all = st.session_state[_risk_key]
+
+if len(risk_all) != len(history):  # belt and braces: never index across tables
+    st.error("Scored orders do not match the loaded order table. Reload the page.")
+    st.stop()
 costs = service.costs
 
 
@@ -292,10 +438,27 @@ def select_order() -> int:
                         format_func=lambda i: f"{history['order_id'].iloc[i][:16]} · {risk_all[i]:.0%}")
 
 
+def order_value_for(pos: int) -> float:
+    """Order value in the displayed currency.
+
+    Olist records real Brazilian transactions in reais. When naira is the
+    presentation currency those values are converted at the official annual
+    average rate for the order's own purchase year -- the same conversion the
+    manuscript documents -- rather than relabelled. Synthetic orders are
+    already generated in naira and pass through untouched.
+    """
+    value = float(history["total_price"].iloc[pos])
+    if active_env.key != environments.OLIST.key or currency != "NGN":
+        return value
+    from olist import currency as fx
+    year = pd.Timestamp(history[TIME_KEY].iloc[pos]).year
+    return value * fx.cross_rates().get(year, fx.NGN_PER_BRL[max(fx.NGN_PER_BRL)])
+
+
 def assess(pos: int):
     row = history.iloc[[pos]]
     return row, service.assess(
-        row, order_value=float(history["total_price"].iloc[pos]),
+        row, order_value=order_value_for(pos),
         order_id=history["order_id"].iloc[pos],
     )
 
@@ -604,14 +767,28 @@ def panel_impact(a) -> None:
     best_alt = min((o for o in brief.options if o.feasible and not o.recommended),
                    key=lambda o: o.total_cost, default=None)
     if brief.net_saving > 0 and best_alt is not None:
+        # A late delivery does not destroy the order's value. It triggers a
+        # refund share, a churn share and a support contact -- which is what
+        # ``exposure`` sums. Saying "the order is lost" overstates the stake by
+        # the difference between the two, and the arithmetic below uses
+        # exposure, so the sentence has to as well.
+        # Exposure is two shares of order value plus a *fixed* support cost, so
+        # on a small order it can exceed the order value itself. Phrasing it as
+        # "of which" would then assert something false, so the sentence states
+        # the two quantities side by side instead of nesting one in the other.
         st.info(
-            f"In plain terms: there is a **{a.probability:.0%}** chance this "
-            f"{costs.format(a.brief.order_value)} order is lost to a late delivery — "
-            f"on average **{costs.format(expected_loss)}**. "
+            f"In plain terms: this order is worth "
+            f"{costs.format(a.brief.order_value)}. A late delivery puts "
+            f"**{costs.format(brief.exposure)}** at stake — refund and "
+            f"repeat-purchase risk, both shares of order value, plus a fixed "
+            f"{costs.format(costs.support_cost)} support cost. There is a "
+            f"**{a.probability:.0%}** chance of that, so the expected cost of "
+            f"doing nothing is **{costs.format(expected_loss)}**. "
             f"{brief.recommendation.name} costs "
             f"{costs.format(brief.recommendation.action_cost)} and lowers the risk to "
             f"**{brief.recommendation.risk:.0%}**, so acting now saves about "
-            f"**{costs.format(brief.net_saving)}**."
+            f"**{costs.format(brief.net_saving)}** — under the stated cost "
+            f"assumptions, not measured finances."
         )
 
 
@@ -743,6 +920,8 @@ if view == "Overview":
 </div>
 """, unsafe_allow_html=True)
 
+    environment_banner()
+
     with st.expander("What this does, in plain terms"):
         st.markdown("""
 This screen answers four questions about a single customer order, in the order a
@@ -873,6 +1052,7 @@ if view in ("Overview", "Explainability", "What-If Analysis"):
 
 elif view == "Risk Dashboard":
     st.markdown("## Risk Dashboard")
+    environment_banner()
     flagged = risk_all >= service.threshold
     exposure = (history["total_price"] * (costs.refund_share + costs.churn_share)
                 + costs.support_cost)
@@ -987,6 +1167,7 @@ elif view == "Risk Dashboard":
 
 elif view == "Sales Analysis":
     st.markdown("## Sales Analysis")
+    environment_banner()
     sales = history.copy()
     sales["revenue"] = sales["total_price"]
     sales["freight"] = sales["total_freight"]
@@ -1216,6 +1397,7 @@ elif view == "Sales Analysis":
 
 elif view == "Orders":
     st.markdown("## Orders")
+    environment_banner()
     st.write("")
     with st.container(border=True):
         st.markdown(panel_head("—", "Order queue",
@@ -1244,6 +1426,7 @@ elif view == "Orders":
 
 else:  # Model Insights
     st.markdown("## Model Insights")
+    environment_banner()
     left, right = st.columns(2, gap="large")
     with left, st.container(border=True):
         st.markdown(panel_head("—", "Model card",
@@ -1252,6 +1435,24 @@ else:  # Model Insights
         st.dataframe(pd.DataFrame(service.model_info().items(),
                                   columns=["Field", "Value"]),
                      hide_index=True, width="stretch")
+
+        # This is the page where AUC appears, so it is the page where the
+        # distinction matters most. A performance figure measured on
+        # generated data says how hard the generator made the problem; it
+        # says nothing about the real market the environment is named after.
+        if active_env.is_synthetic:
+            st.warning(
+                "**These metrics describe a simulation.** The model was "
+                "trained on generated orders whose relationships were written "
+                "by hand. The scores above measure how learnable that "
+                "generated problem is — not how the framework would perform "
+                "on Nigerian delivery data, which has not been tested."
+            )
+        else:
+            st.caption(
+                "Measured on held-out real orders from the public Olist "
+                "dataset. These are the empirical figures behind the paper."
+            )
     with right, st.container(border=True):
         st.markdown(panel_head("—", "What this dataset supports",
                                "Capabilities are disclosed, not silently omitted"),

@@ -104,7 +104,17 @@ class PredictionService:
 
     def __init__(self, artefact: dict, history: pd.DataFrame | None = None,
                  background: pd.DataFrame | None = None,
-                 costs: BusinessCostModel | None = None):
+                 costs: BusinessCostModel | None = None,
+                 environment=None):
+        # Scoring one environment's orders with another's model would be
+        # silent: the feature names match, so every call succeeds and every
+        # number is meaningless. Checked here, at the only place a model and
+        # a dataset are brought together.
+        if environment is not None:
+            from .. import environments as _env
+
+            _env.check_artefact(artefact, environment)
+        self.environment = environment
         self.artefact = artefact
         self.model = artefact["pipeline"]
         self.feature_columns = artefact["feature_columns"]
@@ -121,6 +131,22 @@ class PredictionService:
         )
 
     # -- construction -----------------------------------------------------
+
+    @classmethod
+    def for_environment(cls, environment, scenario: str = "post_dispatch",
+                        **kwargs) -> "PredictionService":
+        """Load the model and data belonging to one environment.
+
+        The preferred constructor: it cannot assemble a mismatched pair,
+        because both paths come from the same environment object.
+        """
+        return cls.from_files(
+            environment.model_path(scenario),
+            environment.processed_path,
+            environment.processed_path.parent / "background.parquet",
+            environment=environment,
+            **kwargs,
+        )
 
     @classmethod
     def from_files(cls, model_path: Path, history_path: Path | None = None,
@@ -241,6 +267,8 @@ class PredictionService:
                 levers[feature] = Capability(available=feature in self.feature_columns,
                                              reason="" if feature in self.feature_columns
                                              else f"{feature} is not a feature of the {self.scenario} model.")
+        dataset = (self.environment.label if self.environment is not None
+                   else "Olist")
         for name, field_needed in [
             ("Courier / shipping tier", "courier or service level"),
             ("Warehouse / fulfilment centre", "warehouse identifier"),
@@ -249,7 +277,7 @@ class PredictionService:
         ]:
             levers[name] = Capability(
                 available=False,
-                reason=f"The Olist dataset records no {field_needed}.",
+                reason=f"The {dataset} dataset records no {field_needed}.",
                 requires=field_needed,
             )
         return levers
