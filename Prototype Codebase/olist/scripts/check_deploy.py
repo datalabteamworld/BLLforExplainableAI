@@ -121,11 +121,43 @@ def check_environment(env) -> None:
             f"risk {risk.min():.3f}–{risk.max():.3f}")
 
 
+def _requirement_lines(path: Path) -> list[str]:
+    lines = path.read_text(encoding="utf-8").splitlines()
+    return [s.split("#")[0].strip() for s in lines if s.split("#")[0].strip()]
+
+
+def check_entry_point() -> None:
+    """Community Cloud deploys from the repository root, not from ROOT.
+
+    It installs requirements.txt beside the entry point without quoting the
+    path, so an entry point under "Prototype Codebase/" fails on the space.
+    The root copy of requirements.txt must list the same packages as ours.
+    """
+    print("\n--- Cloud entry point ---")
+    repo = ROOT.parents[1]
+    entry, root_reqs, our_reqs = (repo / "streamlit_app.py",
+                                  repo / "requirements.txt",
+                                  ROOT / "requirements.txt")
+    for path in (entry, root_reqs):
+        if path.exists():
+            say(OK, f"{path.relative_to(repo)} present")
+        else:
+            say(BAD, f"{path.relative_to(repo)} missing at the repository root")
+            problems.append(f"{path.name} missing at repository root")
+    if root_reqs.exists() and _requirement_lines(root_reqs) != _requirement_lines(our_reqs):
+        say(BAD, "root requirements.txt and Prototype Codebase/olist/requirements.txt "
+                 "list different packages; Cloud installs the root one")
+        problems.append("requirements.txt copies differ")
+    elif root_reqs.exists():
+        say(OK, "root and project requirements.txt list the same packages")
+
+
 def main() -> int:
     from olist import environments
 
     print(f"Project root: {ROOT}")
     print(f"Python {sys.version.split()[0]}")
+    check_entry_point()
 
     for env in environments.ENVIRONMENTS.values():
         try:

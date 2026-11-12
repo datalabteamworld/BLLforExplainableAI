@@ -1,7 +1,8 @@
-"""Streamlit Community Cloud entry point.
+"""Local entry point:  streamlit run streamlit_app.py  (from this directory).
 
-Set the app's main file path to  Prototype Codebase/olist/streamlit_app.py
-Community Cloud then installs requirements.txt from this same directory.
+Do NOT use this file as the Streamlit Community Cloud main file path: the
+space in "Prototype Codebase" breaks Cloud's requirements install. Deploy
+with main file path  streamlit_app.py  — the copy at the repository root.
 
 This delegates to the full nine-panel decision surface in app/dashboard.py —
 the same screen the figures in the paper were captured from.
