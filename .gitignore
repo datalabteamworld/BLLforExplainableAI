@@ -1,0 +1,15 @@
+# Data and models are large and reproducible — keep them out of history
+*.csv
+*.parquet
+*.joblib
+*.db
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+
+# OS
+.DS_Store

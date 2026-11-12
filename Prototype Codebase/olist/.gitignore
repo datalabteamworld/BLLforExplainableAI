@@ -1,0 +1,38 @@
+# Data is not committed - download from Kaggle, see data/README.md
+data/raw/*
+!data/raw/.gitkeep
+data/interim/*
+data/processed/*
+!data/*/.gitkeep
+
+# Artefacts
+models/*.joblib
+models/*.pkl
+reports/figures/*.png
+reports/*.csv
+reports/*.json
+reports/*.txt
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+venv/
+.venv/
+.env
+
+# OS
+.DS_Store
+
+# Deployment artefacts for Streamlit Community Cloud. The app serves these
+# directly and never trains, so they must be committed. Everything else under
+# data/ and models/ stays out. Regenerate with scripts/prepare_dashboard.py and
+# scripts/build_synthetic_ng.py, then run scripts/check_deploy.py.
+# The processed tables derive from the Olist dataset (CC BY-NC-SA 4.0).
+!models/model_post_dispatch.joblib
+!models/synthetic_ng/model_post_dispatch.joblib
+!data/processed/orders_features.parquet
+!data/processed/background.parquet
+!data/synthetic_ng/processed/orders_features.parquet
+!data/synthetic_ng/processed/background.parquet

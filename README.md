@@ -8,12 +8,17 @@
 
 <p align="center">
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Open%20the%20App-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://bllforexplainableai-cpp7ludvcvdhjuqztmv3xk.streamlit.app/)
 [![Paper](https://img.shields.io/badge/Paper-Business%20Language%20Layer-blue?style=for-the-badge)](#citation)
 [![Research](https://img.shields.io/badge/Research-XAI-orange?style=for-the-badge)]
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)]
 [![License](https://img.shields.io/badge/License-MIT-success?style=for-the-badge)]
 
 </p>
+
+### ▶️ [Try the live app](https://bllforexplainableai-cpp7ludvcvdhjuqztmv3xk.streamlit.app/)
+
+*No installation needed: open the link to explore the delivery-risk dashboard and its business explanations.*
 
 ---
 
