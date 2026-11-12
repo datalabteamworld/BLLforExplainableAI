@@ -1,33 +1,40 @@
-# Core
-pandas>=2.1
-numpy>=1.26
-scipy>=1.11
+# Streamlit Community Cloud — runtime dependencies for app/dashboard.py
+#
+# This is the *serving* set, not the training set. The app reads a committed
+# model artefact and a committed feature table; it never builds features and
+# never trains. xgboost, seaborn, fastapi, uvicorn, httpx and pytest are all
+# training-, API- or test-time only, and leaving them out keeps the container
+# start fast and well inside the memory limit.
+#
+# To train, run the tests or serve the API locally, install from pyproject
+# instead:   pip install -e ".[app,api,dev]"
+#
+# Two entries below are not obvious and the app will not start without them:
+#   imbalanced-learn — the model was fitted inside an imblearn Pipeline, so
+#                      joblib needs imblearn importable to UNPICKLE it, even
+#                      though no resampling happens at serving time.
+#   reportlab        — olist/bll/__init__.py imports .report at module level,
+#                      so `from olist.bll import PredictionService` pulls it in.
+#
+# Select Python 3.12 under "Advanced settings" when deploying.
 
-# Modelling
-scikit-learn>=1.4        # TargetEncoder requires >=1.3
-imbalanced-learn>=0.12   # SMOTE inside a Pipeline
-xgboost>=2.0
+streamlit>=1.30
+altair>=5.0
+
+pandas>=2.2
+# The artefacts were pickled under NumPy 2; NumPy 1.x cannot unpickle them.
+numpy>=2.0,<3
+scipy>=1.11
+pyarrow>=14.0
+
+# Pin these to the versions that trained the committed artefacts. A mismatch
+# unpickles with an InconsistentVersionWarning and can silently change
+# predictions. scripts/check_deploy.py prints the version to use here.
+scikit-learn==1.9.1
+imbalanced-learn==0.14.2
 joblib>=1.3
 
-# Feature engineering
-workalendar>=17.0        # Brazilian national holidays
-pyarrow>=14.0            # parquet cache
-
-# Analysis & interpretation
-matplotlib>=3.8
-seaborn>=0.13
 shap>=0.44
-
-# Reporting
+matplotlib>=3.8
 reportlab>=4.0
-
-# API
-fastapi>=0.110
-uvicorn[standard]>=0.27
-httpx>=0.26
-
-# App
-streamlit>=1.30
-
-# Development
-pytest>=7.4
+workalendar>=17.0
